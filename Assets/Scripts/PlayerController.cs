@@ -1,11 +1,10 @@
-
 using System.Collections;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    public float moveSpeed = 10f;
-    public float terminalVelocity = 10f;
+    public float moveSpeed = 15f;
+    public float terminalVelocity = 15f;
     public float gravity = 0.5f;
     private float fallingSpeed;
 
@@ -90,18 +89,23 @@ public class PlayerController : MonoBehaviour
     //Made it like a dash
     //So will decrease force applied over time
     private IEnumerator SmoothJumping(){
-        Debug.Log("HERE");
         float currentJumpForce = jumpForceStart;
         //Keep track of how much jumpForce has been applied
         float jumpForceCumul = currentJumpForce;
 
         while(jumpForceCumul < jumpForceTotal){
-            currentJumpForce /= 1.5f;
+            currentJumpForce /= 1.3f;
             jumpForceCumul += currentJumpForce;
 
             rb.AddForce(Vector3.up * currentJumpForce, ForceMode.VelocityChange);
-            //Need to limit this to just lfet + right as otherwise it may add a force going down.
-            rb.AddForce(rb.GetRelativePointVelocity(this.transform.position).normalized * currentJumpForce, ForceMode.VelocityChange);
+            //Need to limit horizontal addition to just left + right as otherwise it may add a force going down.
+            if(rb.velocity.x < -0.1f){
+                //Currently going left
+                rb.AddForce(Vector3.left * currentJumpForce, ForceMode.VelocityChange);
+            }else if(rb.velocity.x > 0.1f){
+                //Currently going right
+                rb.AddForce(Vector3.right * currentJumpForce, ForceMode.VelocityChange);
+            }
 
             yield return new WaitForFixedUpdate();
         }

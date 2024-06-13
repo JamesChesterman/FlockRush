@@ -455,8 +455,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 040215195e007364ba7e03b6b6b5d448, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 10
-  terminalVelocity: 10
+  moveSpeed: 15
+  terminalVelocity: 15
   gravity: 0.5
   jumpForceTotal: 200
   jumpForceStart: 50
@@ -560,7 +560,7 @@ Transform:
   m_GameObject: {fileID: 1205612299}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -2.3787198, y: -1.71, z: 0.22884648}
-  m_LocalScale: {x: 2.74, y: 1.73, z: 4.52}
+  m_LocalScale: {x: 3.61, y: 1.1, z: 1.05}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
