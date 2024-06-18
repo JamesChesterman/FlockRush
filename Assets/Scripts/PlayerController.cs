@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -15,9 +16,13 @@ public class PlayerController : MonoBehaviour
     private bool grounded;
 
     private bool canDash;
-    private bool canCooldown;
+    private bool canDashCooldown;
     public float dashForce; 
     private bool facingRight;
+
+    private bool canWallJump;
+    private bool canWallJumpCooldown;
+    private String lastWallJump;
 
     // Start is called before the first frame update
     void Start()
@@ -26,7 +31,11 @@ public class PlayerController : MonoBehaviour
         grounded = false;
         rb = GetComponent<Rigidbody>();
         canDash = true;
-        canCooldown = false;
+        canDashCooldown = false;
+        
+        canWallJump = false;
+        canWallJumpCooldown = true;
+        lastWallJump = "None";
     }
 
     void FixedUpdate()
@@ -69,15 +78,20 @@ public class PlayerController : MonoBehaviour
     private void CheckJump(){
         //GetButtonDown didn't work. May need to change this in future as currently you can hold it and jump a load
         if(Input.GetButton("Jump") && grounded){
-            StartCoroutine(SmoothJumping());
+            StartCoroutine(SmoothJumping(false));
             grounded = false;
+        }
+
+        if(Input.GetButton("Jump") && canWallJump){
+            StartCoroutine(SmoothJumping(true));
+            canWallJump = false;
         }
     }
 
     private void CheckDash(){
         if((Input.GetAxis("Dash") > 0 || Input.GetButton("DashKeyboard")) && canDash){
             canDash = false;
-            canCooldown = true;
+            canDashCooldown = true;
             if(facingRight){
                 rb.AddForce(Vector3.right * dashForce, ForceMode.Impulse);
             }else{
@@ -89,7 +103,7 @@ public class PlayerController : MonoBehaviour
 
     //Using own method as other gravity options wouldn't accelerate to a terminal velocity.
     private void GravityMethod(){
-        if(!grounded){
+        if(!grounded && !canWallJump){
             if(fallingSpeed <= terminalVelocity){
                 fallingSpeed += gravity;
             }
@@ -103,24 +117,35 @@ public class PlayerController : MonoBehaviour
 		LayerMask layer = collision.gameObject.layer;
 		if (layer.value == 6) {
 			grounded = true;
-
-            if(canCooldown && Input.GetAxis("Dash") <= 0 && !Input.GetButton("DashKeyboard")){
+            lastWallJump = "None";
+            if(canDashCooldown && Input.GetAxis("Dash") <= 0 && !Input.GetButton("DashKeyboard")){
                 StartCoroutine(DashCooldown());
             }
-		}
+		}else if(layer.value == 7){
+            if(!grounded && canWallJumpCooldown){
+                StartCoroutine(WallJumpCooldown());
+            }
+        }
     }
 
     private void OnCollisionExit(Collision collision){
         LayerMask layer = collision.gameObject.layer;
         if(layer.value == 6){
             grounded = false;
+        }else if(layer.value == 7){
+            canWallJump = false;
+            canWallJumpCooldown = true;
         }
     }
 
     //Using Impulse mode made all the force get applied at the same time
     //Made it like a dash
     //So will decrease force applied over time
-    private IEnumerator SmoothJumping(){
+    private IEnumerator SmoothJumping(bool isWallJump){
+        if(isWallJump){
+            AdjustForWallJump();
+        }
+
         float currentJumpForce = jumpForceStart;
         //Keep track of how much jumpForce has been applied
         float jumpForceCumul = currentJumpForce;
@@ -143,11 +168,38 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    //Get obj to go away from the wall a bit so it doesn't just get stuck
+    //The lastWallJump keeps track of the direction of the last wall jump.
+    //If you're facing right, the wall jump will be left, so lastWallJump is left
+    //Need to alternate directions if you're chaining wall jumps
+    private void AdjustForWallJump(){
+        if(facingRight){
+            if(lastWallJump != "Left"){
+                rb.AddForce(Vector3.left * jumpForceTotal, ForceMode.Impulse);
+                rb.AddForce(Vector3.up * jumpForceTotal * 0.5f, ForceMode.Impulse);
+                lastWallJump = "Left";
+            }
+        }else{
+            if(lastWallJump != "Right"){
+                rb.AddForce(Vector3.right * jumpForceTotal, ForceMode.Impulse);
+                rb.AddForce(Vector3.up * jumpForceTotal * 0.5f, ForceMode.Impulse);
+                lastWallJump = "Right";
+            }
+        }
+    }
+
     //Need this canCooldown so this coroutine isn't called many times
     private IEnumerator DashCooldown(){
-        canCooldown = false;
+        canDashCooldown = false;
 		yield return new WaitForSeconds(1f);
 		canDash = true;
+    }
+
+    private IEnumerator WallJumpCooldown(){
+        canWallJumpCooldown = false;
+        canWallJump = true;
+        yield return new WaitForSeconds(1f);
+        canWallJump = false;
     }
 
     
