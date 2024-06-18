@@ -14,12 +14,19 @@ public class PlayerController : MonoBehaviour
     private Rigidbody rb;
     private bool grounded;
 
+    private bool canDash;
+    private bool canCooldown;
+    public float dashForce; 
+    private bool facingRight;
+
     // Start is called before the first frame update
     void Start()
     {   
         fallingSpeed = 0f;
         grounded = false;
         rb = GetComponent<Rigidbody>();
+        canDash = true;
+        canCooldown = false;
     }
 
     void FixedUpdate()
@@ -30,6 +37,7 @@ public class PlayerController : MonoBehaviour
     private void Movement(){
         CheckMovement();
         CheckJump();
+        CheckDash();
         GravityMethod();
     }
 
@@ -38,6 +46,15 @@ public class PlayerController : MonoBehaviour
     private void CheckMovement(){
         //InputManager has settings about acceleration
         float moveHorizontal = Input.GetAxis("Horizontal");
+
+        //Need to get direction for dashing
+        if(moveHorizontal > 0){
+            facingRight = true;
+        }
+        if(moveHorizontal < 0){
+            facingRight = false;
+        }
+
         Vector3 movement;
         //Player is jumping, need to set rb.velocity.y to 0 to stop it eventually
         if(rb.velocity.y > 0){
@@ -57,6 +74,18 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void CheckDash(){
+        if((Input.GetAxis("Dash") > 0 || Input.GetButton("DashKeyboard")) && canDash){
+            canDash = false;
+            canCooldown = true;
+            if(facingRight){
+                rb.AddForce(Vector3.right * dashForce, ForceMode.Impulse);
+            }else{
+                rb.AddForce(Vector3.left * dashForce, ForceMode.Impulse);
+            }
+        }
+    }
+
 
     //Using own method as other gravity options wouldn't accelerate to a terminal velocity.
     private void GravityMethod(){
@@ -70,11 +99,14 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
     private void OnCollisionStay(Collision collision) {
 		LayerMask layer = collision.gameObject.layer;
 		if (layer.value == 6) {
 			grounded = true;
+
+            if(canCooldown && Input.GetAxis("Dash") <= 0 && !Input.GetButton("DashKeyboard")){
+                StartCoroutine(DashCooldown());
+            }
 		}
     }
 
@@ -101,13 +133,22 @@ public class PlayerController : MonoBehaviour
             //Need to limit horizontal addition to just left + right as otherwise it may add a force going down.
             if(rb.velocity.x < -0.1f){
                 //Currently going left
-                rb.AddForce(Vector3.left * currentJumpForce, ForceMode.VelocityChange);
+                rb.AddForce(Vector3.left * currentJumpForce * 0.5f, ForceMode.VelocityChange);
             }else if(rb.velocity.x > 0.1f){
                 //Currently going right
-                rb.AddForce(Vector3.right * currentJumpForce, ForceMode.VelocityChange);
+                rb.AddForce(Vector3.right * currentJumpForce * 0.5f, ForceMode.VelocityChange);
             }
 
             yield return new WaitForFixedUpdate();
         }
     }
+
+    //Need this canCooldown so this coroutine isn't called many times
+    private IEnumerator DashCooldown(){
+        canCooldown = false;
+		yield return new WaitForSeconds(1f);
+		canDash = true;
+    }
+
+    
 }
